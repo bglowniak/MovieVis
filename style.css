@@ -11,7 +11,7 @@ svg {
 }
 
 #main {
-  width: 1000px;
+  width: 750px;
   height: 650px;
   float: left;
 }
@@ -19,6 +19,12 @@ svg {
 #chart {
   width: 750px;
   height: 450px;
+}
+
+#bar {
+  width: 600px;
+  height: 450px;
+  float: right;
 }
 
 .details {
@@ -30,7 +36,16 @@ svg {
   background-color: rgba(127, 127, 127, 0.25);
 }
 
-.details > p {
+.contDetails {
+  width: 150px;
+  float: right;
+  margin-right: 150px;
+  border-radius: 15px;
+  border: 2px solid black;
+  background-color: rgba(127, 127, 127, 0.25);
+}
+
+.details > p, .contDetails > p {
   margin: 4px;
   font-size: 12px;
 }
@@ -51,10 +66,41 @@ svg {
   display: none;
 }
 
+circle {
+  fill: rgba(0, 140, 255, 0.5);
+}
+
+circle:hover {
+    stroke: black;
+}
+
 .profit {
   fill: green;
 }
 
 .loss {
   fill: red;
+}
+
+.brushed {
+  stroke: yellow;
+}
+
+.bar {
+  fill: rgba(255, 166, 0, 0.5);
+  stroke: black;
+}
+
+.continent:hover {
+  stroke: red;
+  stroke-width: 3px;
+}
+
+.clicked {
+  stroke: red;
+  stroke-width: 3px;
+}
+
+#dropdown {
+    margin-left: 50px;
 }
