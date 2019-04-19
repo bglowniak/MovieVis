@@ -10,6 +10,12 @@ svg {
     font-size: 12px;
 }
 
+button {
+    margin-left: 45px;
+    margin-right: 40px;
+    margin-top: 10px;
+}
+
 #main {
   width: 750px;
   height: 650px;
@@ -30,30 +36,42 @@ svg {
 .details {
   width: 250px;
   height: 200px;
-  float: left;
+  float: middle;
   border-radius: 15px;
   border: 2px solid black;
   background-color: rgba(127, 127, 127, 0.25);
 }
 
-.contDetails {
+.contDetails, .genreDetails, .ratingDetails {
   width: 155px;
   float: right;
-  margin-right: 150px;
+  margin-right: 190px;
+  margin-top: 10px;
   border-radius: 15px;
   border: 2px solid black;
   background-color: rgba(127, 127, 127, 0.25);
 }
 
-.details > p, .contDetails > p {
+.details > p, .contDetails > p, .genreDetails > p, .ratingDetails > p {
   margin: 4px;
   font-size: 12px;
+}
+
+.chart-title {
+    font-weight: bold;
+    font-size: 24px;
 }
 
 .title {
   font-weight: bold;
   font-size: 14px !important;
   text-align: center;
+}
+
+.faded {
+    font-weight: bold;
+    font-size: 14px !important;
+    fill-opacity: 0.2;
 }
 
 .subheader {
@@ -67,23 +85,17 @@ svg {
 }
 
 circle {
-  fill: rgba(0, 140, 255, 0.5);
+  fill: rgba(0, 206, 209, 0.3);
+  stroke-width: 0.5;
+  stroke: black;
 }
 
 circle:hover {
-    stroke: black;
-}
-
-.profit {
-  fill: green;
-}
-
-.loss {
-  fill: red;
+    fill: black !important;
 }
 
 .brushed {
-  stroke: yellow;
+  fill: rgba(255, 166, 0, 0.5) !important;
 }
 
 .bar {
@@ -91,7 +103,7 @@ circle:hover {
   stroke: black;
 }
 
-.continent:hover {
+.continent:hover, .genre:hover, .rating:hover {
   stroke: red;
   stroke-width: 3px;
 }

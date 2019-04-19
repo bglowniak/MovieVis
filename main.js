@@ -1,19 +1,25 @@
 width = 750;
 height = 450;
+axisHeight = 120;
+axisMargin = 75;
 chart_margins = {left: 50, right: 30, top: 30, bottom: 30};
 bar_margins = {left: 100, right: 50, top: 30, bottom: 30};
+circleRadius = 3;
 
 var barWidth = 600;
 
 var numBoxes = 0;
-var lineOn = true;
+var lineOn = false;
 
-var brushContainer;
-var brush;
+var brushContainer, brushContainerBudget, brushContainerGross;
+var brush, brushBudget, brushGross;
 
-var xScale, yScale, xScaleBar, yScaleBar;
+var isBrush, isBrushBudget, isBrushGross;
+var brushMainActive = false, brushBudgetActive = false, brushGrossActive = false;
 
-var xAxisBar, yAxisBar;
+var xScale, yScale, xScaleBar, yScaleBar, xScaleBudget, xScaleGross;
+
+var xAxisBar, yAxisBar, xAxisGross;
 
 var genres, countries, continents, ratings;
 
@@ -25,14 +31,14 @@ var brushActive = false;
 
 var sel = null;
 
-var selectedContinent = null;
+var selectedContinent = null, selectedGenre = null, selectedRating = null;
 
 function appendDetailsBox(id, title, duration, year, rating, genres, director, cast, country, budget, gross, score) {
     if (numBoxes) { return; }
 
     numBoxes++;
 
-    $("#main").append("<div id=details-" + id + " class=details></div>")
+    $("#chart").append("<div id=details-" + id + " class=details></div>")
     id = "#details-" + id;
     $(id).append("<p class=title>" + title + "</p>");
     $(id).append("<p class=subheader>" + duration + " min | " + year + " | " + rating + "</p>");
@@ -63,12 +69,14 @@ function appendCountriesBox(continent) {
     countries.forEach((c) => {
         countriesData.push({country: c, freq: 0});
     })
+    var total = 0;
     d3.selectAll(".brushed")
       .each((d) => {
           if (d.continent == continent) {
               countriesData.forEach((elem) => {
                   if (d.country == elem.country) {
                       elem.freq++;
+                      total++;
                   }
               })
           }
@@ -78,6 +86,7 @@ function appendCountriesBox(continent) {
       })
     id = "#" + id;
     $(id).append("<p class=title>" + continent + "</p>");
+    $(id).append("<p><strong>Total: </strong>" + total + "</p><p><br></p>");
     countriesData.forEach((elem) => {
         if (elem.freq > 0) {
             $(id).append("<p><strong>" + elem.country + ": </strong>" + elem.freq + "</p>");
@@ -91,9 +100,77 @@ function appendCountriesBox(continent) {
     });
 }
 
+function appendGenreBox(genre) {
+    $(".genreDetails").remove();
+    d3.selectAll(".clicked").classed("clicked", false);
+    d3.select("#bar-" + genre).classed("clicked", true);
+    id = genre;
+    selectedGenre = genre;
+    $("#bar").append("<div id=" + id + " class=genreDetails></div>");
+    var freq = 0;
+    d3.selectAll(".brushed")
+      .each((d) => {
+          d.genres.forEach((elem) => {
+              if (genre == elem) {
+                  freq++;
+              }
+          })
+      })
+    id = "#" + id;
+    $(id).append("<p class=title>" + genre + "</p>");
+    $(id).append("<p><strong>Count: </strong>" + freq + "</p>");
+
+    $(id).click(() => {
+        $(id).unbind("click");
+        $(id).remove();
+        d3.select("#bar-" + genre).classed("clicked", false);
+        selectedGenre = null;
+    });
+}
+
+function appendRatingBox(rating) {
+    $(".ratingDetails").remove();
+    d3.selectAll(".clicked").classed("clicked", false);
+    if (rating == "Not Rated") {
+        id = "nr";
+    } else {
+        id = rating;
+    }
+    d3.select("#bar-" + id).classed("clicked", true);
+    selectedRating = rating;
+    $("#bar").append("<div id=" + id + " class=ratingDetails></div>");
+    var freq = 0;
+    d3.selectAll(".brushed")
+      .each((d) => {
+            if (d.content_rating == rating) {
+                freq++;
+            }
+      })
+    id = "#" + id;
+    $(id).append("<p class=title>" + rating + "</p>");
+    $(id).append("<p><strong>Count: </strong>" + freq + "</p>");
+
+    $(id).click(() => {
+        $(id).unbind("click");
+        $(id).remove();
+        d3.select("#bar-" + id).classed("clicked", false);
+        selectedRating = null;
+    });
+}
+
 var plot = d3.select('#chart').append("svg")
             .attr("width", width)
             .attr("height", height);
+
+var budget = d3.select('#chart')
+               .append("svg")
+               .attr("width", width)
+               .attr("height", axisHeight);
+
+var gross = d3.select('#chart')
+               .append("svg")
+               .attr("width", width)
+               .attr("height", axisHeight);
 
 var bar = d3.select('#bar')
             .append("svg")
@@ -144,8 +221,9 @@ d3.csv("movies.csv", (movies) => {
     data = movies;
 
     var budgetExtent = d3.extent(movies, function(row) { return row.budget; });
+    var budgetExtentNoGross = d3.extent(movies, function(row) { if (row.gross == 0) return row.budget; });
     var grossExtent = d3.extent(movies, function(row) { return row.gross; });
-    var imdbExtent = d3.extent(movies, function(row) { return row.imdb_score; });
+    var grossExtentNoBudget = d3.extent(movies, function(row) { if (row.budget == 0) return row.gross; });
 
     xScale = d3.scalePow().exponent(0.4).domain(budgetExtent).range([chart_margins.left, width - chart_margins.right])
     yScale = d3.scalePow().exponent(0.4).domain(grossExtent).range([height - chart_margins.top, chart_margins.bottom])
@@ -157,30 +235,160 @@ d3.csv("movies.csv", (movies) => {
     xAxisBar = d3.axisBottom().scale(xScaleBar);
     yAxisBar = d3.axisLeft().scale(yScaleBar);
 
-    brushContainer = plot.append('g')
-                         .attr('id', 'brush-container');
+    xScaleBudget = d3.scalePow().exponent(0.4).domain(budgetExtentNoGross).range([chart_margins.left, width - chart_margins.right])
+    xAxisBudget = d3.axisBottom().scale(xScaleBudget);
 
+    xScaleGross = d3.scalePow().exponent(0.4).domain(grossExtentNoBudget).range([chart_margins.left, width - chart_margins.right])
+    xAxisGross = d3.axisBottom().scale(xScaleGross);
 
-    brush = d3.brush()
-               .extent([[40, 20], [width - 20, height - 20]])
+    brushContainer = plot.append('g').attr('id', 'brush-container');
+
+    brush = d3.brush().extent([[40, 20], [width - 20, height - 20]]);
         
     brush.on('start', handleBrushStart)
-         .on('brush', handleBrushMove)
-         .on('end', handleBrushEnd);
+         .on('brush', handleBrushMoveMain)
+         .on('end', handleBrushEndMain);
 
     brushContainer.call(brush);
+
+    brushContainerBudget = budget.append('g').attr('id', 'brush-container-budget');
+
+    brushBudget = d3.brushX().extent([[chart_margins.left, chart_margins.top + 20], [width - chart_margins.right, axisHeight - (axisMargin / 2) - 6]]);
+
+    brushBudget.on('start', handleBrushStart)
+               .on('brush', handleBrushMoveBudget)
+               .on('end', handleBrushEndBudget);
+
+    brushContainerBudget.call(brushBudget);
+
+    brushContainerGross = gross.append('g').attr('id', 'brush-container-gross');
+
+    brushGross = d3.brushX().extent([[chart_margins.left, chart_margins.top + 20], [width - chart_margins.right, axisHeight - (axisMargin / 2) - 6]]);
+
+    brushGross.on('start', handleBrushStart)
+              .on('brush', handleBrushMoveGross)
+              .on('end', handleBrushEndGross);
+
+    brushContainerGross.call(brushGross);
+
+    d3.select("#chart")
+        .append("button")
+        .attr("id", "line-toggle")
+        .text("Toggle Profit-Loss Line")
+        .on("click", () => {
+            lineOn = !lineOn;
+
+            if (lineOn) {
+                plot.selectAll("circle")
+                    .filter((d) => {
+                        return d.budget <= d.gross;
+                    })
+                    .transition()
+                    .duration(() => {
+                        return 10;
+                    })
+                    .delay((d, i) => {
+                        return (i+1) / 2;
+                    })
+                    .style("fill", "rgba(0, 128, 0, 0.4)");
+                plot.selectAll("circle")
+                    .filter((d) => {
+                        return d.budget > d.gross;
+                    })
+                    .transition()
+                    .duration(() => {
+                        return 10;
+                    })
+                    .delay((d, i) => {
+                        return (i+1) / 2;
+                    })
+                    .style("fill", "rgba(255, 0, 0, 0.4)");
+            } else {
+                plot.selectAll("circle")
+                    .transition()
+                    .duration(() => {
+                        return 10;
+                    })
+                    .delay((d, i) => {
+                        return (i+1) / 2;
+                    })
+                    .style("fill", "rgba(0, 206, 209, 0.3)");
+            }
+        
+            d3.select(".budget-line").classed("hidden", !lineOn);
+        });
 
     plot.selectAll("circle")
        .data(movies)
        .enter()
+       .filter((d) => {
+           return d.budget != 0 && d.gross != 0;
+       })
        .append("circle")
-       .attr("id", function(d, i) {return i;} )
-       .classed("profit", function(d) { return d.budget <= d.gross && lineOn; })
-       .classed("loss", function(d) { return d.budget > d.gross && lineOn; })
+       .attr("id", function(d) {return d.i;} )
+       .style("fill", function(d) {
+           if (d.budget <= d.gross && lineOn) {
+               return "rgba(0, 128, 0, 0.4)";
+           } else if (d.budget > d.gross && lineOn) {
+               return "rgba(255, 0, 0, 0.4)";
+           } else {
+               return "rgba(0, 206, 209, 0.3)";
+           }
+        })
        .attr("cx", function(d) { return xScale(d.budget); })
        .attr("cy", function(d) { return yScale(d.gross); })
-       .attr("r", 3)
+       .attr("r", circleRadius)
        .on("click", function(d, i) {
+            appendDetailsBox(i, d.movie_title,
+                                 d.duration,
+                                 d.title_year,
+                                 d.content_rating,
+                                 d.genres,
+                                 d.director_name,
+                                 [d.actor_1_name, d.actor_2_name, d.actor_3_name],
+                                 d.country,
+                                 d.budget,
+                                 d.gross,
+                                 d.imdb_score);
+       });
+
+    budget.selectAll("circle")
+          .data(movies)
+          .enter()
+          .filter((d) => {
+              return d.budget != 0 && d.gross == 0;
+          })
+          .append("circle")
+          .attr("id", (d) => { return d.id; })
+          .attr("cx", (d) => { return xScaleBudget(d.budget); })
+          .attr("cy", axisMargin - 10)
+          .attr("r", circleRadius)
+          .on("click", function(d, i) {
+            appendDetailsBox(i, d.movie_title,
+                                 d.duration,
+                                 d.title_year,
+                                 d.content_rating,
+                                 d.genres,
+                                 d.director_name,
+                                 [d.actor_1_name, d.actor_2_name, d.actor_3_name],
+                                 d.country,
+                                 d.budget,
+                                 d.gross,
+                                 d.imdb_score);
+       });
+
+    gross.selectAll("circle")
+          .data(movies)
+          .enter()
+          .filter((d) => {
+              return d.gross != 0 && d.budget == 0;
+          })
+          .append("circle")
+          .attr("id", (d) => { return d.id; })
+          .attr("cx", (d) => { return xScaleGross(d.gross); })
+          .attr("cy", axisMargin - 10)
+          .attr("r", circleRadius)
+          .on("click", function(d, i) {
             appendDetailsBox(i, d.movie_title,
                                  d.duration,
                                  d.title_year,
@@ -204,8 +412,84 @@ d3.csv("movies.csv", (movies) => {
         .call(yAxis.tickFormat(d => (d / 1000000) + "m"))
         .attr("transform", "translate(" + chart_margins.left + ", 0)")
 
+    plot.append("text")
+        .attr("x", width / 2)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .classed("chart-title", true)
+        .text("Gross v. Budget");
+
+    plot.append("text")
+        .classed("subheader", true)
+        .attr("transform", "translate(" + ((width / 2) - 35) + ", " + (height - 2) + ")")
+        .text("Budget ($)");
+    
+    plot.append("text")
+        .classed("subheader", true)
+        .attr("transform", "translate(7, " + (height / 2) + ") rotate(270)")
+        .text("Gross ($)");
+
+    budget.append("g")
+        .call(xAxisBudget.tickFormat(d => (d / 1000000) + "m"))
+        .attr("transform", "translate(0, " + axisMargin + ")")
+        .selectAll("text")
+        .attr("transform", function (d) { return "rotate(-30)"; });
+    
+    budget.append("text")
+          .attr("x", width / 2)
+          .attr("y", 30)
+          .attr("text-anchor", "middle")
+          .classed("title", true)
+          .text("Movies With No Reported Gross");
+        
+    budget.append("text")
+          .classed("subheader", true)
+          .attr("transform", "translate(" + ((width / 2) - 40) + ", " + (axisMargin + 35) + ")")
+          .text("Budget ($)");
+
+    gross.append("g")
+          .call(xAxisGross.tickFormat(d => (d / 1000000) + "m"))
+          .attr("transform", "translate(0, " + axisMargin + ")")
+          .selectAll("text")
+          .attr("transform", function (d) { return "rotate(-30)"; });
+
+    gross.append("text")
+        .attr("x", width / 2)
+        .attr("y", 30)
+        .attr("text-anchor", "middle")
+        .classed("title", true)
+        .text("Movies With No Reported Budget");
+
+    gross.append("text")
+          .classed("subheader", true)
+          .attr("transform", "translate(" + ((width / 2) - 40) + ", " + (axisMargin + 35) + ")")
+          .text("Gross ($)");
+    
+    d3.select("#chart")
+         .append("button")
+         .attr("id", "clear-brush")
+         .style("float", "right")
+         .text("Clear All Brushes")
+         .on("click", () => {
+             brushMainActive = false;
+             brushBudgetActive = false;
+             brushGrossActive = false;
+             handleBrushEnd();
+             brushContainer.call(brush.move, null);
+             brushContainerBudget.call(brushBudget.move, null);
+             brushContainerGross.call(brushGross.move, null);
+             selectedContinent = null;
+             selectedGenre = null;
+             selectedRating = null;
+             $(".contDetails").remove();
+             $(".genreDetails").remove();
+             $(".ratingDetails").remove();
+             d3.selectAll(".clicked").classed("clicked", false);
+         })
+
     plot.append('line')
         .attr('class', 'budget-line')
+        .classed('hidden', !lineOn)
         .attr('stroke-width', 2)
         .attr('stroke', 'blue')
         .attr("x1", xScale(0))
@@ -223,11 +507,35 @@ d3.csv("movies.csv", (movies) => {
        .call(yAxisBar)
        .attr("transform", "translate(" + bar_margins.left + ", 0)");
 
+    bar.append("text")
+       .classed("subheader", true)
+       .classed("hidden", true)
+       .attr("id", "bar-label")
+       .attr("transform", "translate(" + ((width / 2) - 100) + ", " + (height - 2) + ")")
+       .text("Number of Movies (#)");
+
+    bars.append("text")
+        .attr("x", barWidth / 2 + 20)
+        .attr("y", height / 2 - 7)
+        .attr("text-anchor", "middle")
+        .classed("faded", true)
+        .append("tspan")
+        .attr("x", barWidth / 2 + 20)
+        .attr("y", height / 2 - 7)
+        .text("Brush Some Data")
+        .append("tspan")
+        .attr("x", barWidth / 2 + 20)
+        .attr("y", height / 2 + 7)
+        .text("to Begin")
+
     bars.selectAll('rect')
         .data(genres)
         .enter()
         .append('rect')
-        .attr('class', 'bar')
+        .attr('class', 'bar genre')
+        .attr('id', (d) => {
+            return "bar-" + d;
+        })
         .attr('x', bar_margins.left)
         .attr('y', (d) => {
             return yScaleBar(d);
@@ -235,26 +543,24 @@ d3.csv("movies.csv", (movies) => {
         .attr('width', 0)
         .attr('height', function(d) {
             return yScaleBar.bandwidth()*.8;
+        })
+        .on('click', (d) => {
+            appendGenreBox(d);
         });
-});
-
-$("#line-toggle").click(() => {
-    lineOn = !lineOn;
-
-    plot.selectAll("circle")
-        .classed("profit", function(d) { return d.budget <= d.gross && lineOn; })
-        .classed("loss", function(d) { return d.budget > d.gross && lineOn; })
-
-    d3.select(".budget-line").classed("hidden", !lineOn);
 });
 
 $("#dropdown").change(() => {
     bars.selectAll(".bar")
-            // .transition()
-            // .attr("width", 0)
-            .remove();
-    // bars.selectAll(".bar")
-    //     .remove();
+        .remove();
+    selectedContinent = null;
+    selectedGenre = null;
+    selectedRating = null;
+    d3.selectAll(".contDetails")
+      .remove();
+    d3.selectAll(".genreDetails")
+      .remove();
+    d3.selectAll(".ratingDetails")
+      .remove();
     var value = $("#dropdown").val();
     if (value == "genre") {
         yScaleBar.domain(genres);
@@ -262,7 +568,10 @@ $("#dropdown").change(() => {
             .data(genres)
             .enter()
             .append('rect')
-            .attr('class', 'bar')
+            .attr('class', 'bar genre')
+            .attr('id', (d) => {
+                return "bar-" + d;
+            })
             .attr('x', bar_margins.left)
             .attr('y', (d) => {
                 return yScaleBar(d);
@@ -270,6 +579,9 @@ $("#dropdown").change(() => {
             .attr('width', 0)
             .attr('height', function(d) {
                 return yScaleBar.bandwidth()*.8;
+            })
+            .on('click', (d) => {
+                appendGenreBox(d);
             });
     } else if (value == "continent") {
         yScaleBar.domain(continents);
@@ -291,14 +603,21 @@ $("#dropdown").change(() => {
             })
             .on("click", (d) => {
                 appendCountriesBox(d);
-            })
+            });
     } else if (value == "rating") {
         yScaleBar.domain(ratings);
         bars.selectAll('.rect')
             .data(ratings)
             .enter()
             .append('rect')
-            .attr('class', 'bar')
+            .attr('class', 'bar rating')
+            .attr('id', (d) => {
+                if (d == "Not Rated" ) {
+                    return "bar-nr";
+                } else {
+                    return "bar-" + d;
+                }
+            })
             .attr('x', bar_margins.left)
             .attr('y', (d) => {
                 return yScaleBar(d);
@@ -306,6 +625,9 @@ $("#dropdown").change(() => {
             .attr('width', 0)
             .attr('height', function(d) {
                 return yScaleBar.bandwidth()*.8;
+            })
+            .on('click', (d) => {
+                appendRatingBox(d);
             });
     }
     bar.select(".yAxisBar")
@@ -322,8 +644,36 @@ function handleBrushStart() {
     brushActive = true;
 }
 
+function handleBrushMoveMain() {
+    isBrush = true;
+    isBrushBudget = false;
+    isBrushGross = false;
+    handleBrushMove()
+}
+
+function handleBrushMoveBudget() {
+    isBrush = false;
+    isBrushBudget = true;
+    isBrushGross = false;
+    handleBrushMove()
+}
+
+function handleBrushMoveGross() {
+    isBrush = false;
+    isBrushBudget = false;
+    isBrushGross = true;
+    handleBrushMove()
+}
+
 function handleBrushMove() {
     console.log("MOVE");
+    d3.selectAll(".faded")
+      .classed("hidden", true);
+    d3.selectAll(".xAxisBar")
+      .selectAll(".tick")
+      .classed("hidden", false);
+    d3.select("#bar-label")
+      .classed("hidden", false);
     if (d3.event) {
         sel = d3.event.selection;
     }
@@ -334,46 +684,80 @@ function handleBrushMove() {
     if (selectedContinent != null) {
         appendCountriesBox(selectedContinent);
     }
+    if (selectedGenre != null) {
+        appendGenreBox(selectedGenre);
+    }
+    if (selectedRating != null) {
+        appendRatingBox(selectedRating);
+    }
 
-    var [[left, top], [right, bottom]] = sel;
-    
-    var genreData = []
-    genres.forEach((g) => {
-        genreData.push({genre: g, freq: 0});
-    })
-    var continentData = [];
-    continents.forEach((c) => {
-        continentData.push({continent: c, freq: 0});
-    })
-    var ratingData = [];
-    ratings.forEach((l) => {
-        ratingData.push({rating: l, freq: 0});
-    })
-	plot.selectAll("circle")
-		.classed('brushed', (d) => {
-			var cx = xScale(d.budget);
-            var cy = yScale(d.gross);
-            return left <= cx && cx <= right && top <= cy && cy <= bottom;
-        });
-    plot.selectAll(".brushed")
-        .each((d) => {
-            genreData.forEach((elem) => {
-                if (data[d.id].genres.includes(elem.genre)) {
-                    elem.freq++;
-                }
-            });
-            continentData.forEach((elem) => {
-                if (elem.continent == data[d.id].continent) {
-                    elem.freq++;
-                }
-            });
-            ratingData.forEach((elem) => {
-                if (elem.rating == data[d.id].content_rating) {
-                    elem.freq++;
-                }
-            });
-        });
+    if (!isBrush) {
+        var [left, right] = sel;
+    } else {
+        var [[left, top], [right, bottom]] = sel;
+    }
+
     var value = $("#dropdown").val();
+
+    if (value == "genre") {
+        var genreData = []
+        genres.forEach((g) => {
+            genreData.push({genre: g, freq: 0});
+        })
+    } else if (value == "continent") {
+        var continentData = [];
+        continents.forEach((c) => {
+            continentData.push({continent: c, freq: 0});
+        })
+    } else if (value == "rating") {
+        var ratingData = [];
+        ratings.forEach((l) => {
+            ratingData.push({rating: l, freq: 0});
+        })
+    }
+    
+    if (isBrush) {
+        plot.selectAll("circle")
+            .classed('brushed', (d) => {
+                    var cx = xScale(d.budget);
+                    var cy = yScale(d.gross);
+                    return left <= cx && cx <= right && top <= cy && cy <= bottom;
+            });
+    } else if (isBrushBudget) {
+        budget.selectAll("circle")
+              .classed('brushed', (d) => {
+                  var cx = xScaleBudget(d.budget);
+                  return left <= cx && cx <= right;
+              })
+    } else if (isBrushGross) {
+        gross.selectAll("circle")
+              .classed('brushed', (d) => {
+                  var cx = xScaleGross(d.gross);
+                  return left <= cx && cx <= right;
+              })
+    }
+    d3.selectAll(".brushed")
+        .each((d) => {
+            if (value == "genre") {
+                genreData.forEach((elem) => {
+                    if (data[d.id].genres.includes(elem.genre)) {
+                        elem.freq++;
+                    }
+                });
+            } else if (value == "continent") {
+                continentData.forEach((elem) => {
+                    if (elem.continent == data[d.id].continent) {
+                        elem.freq++;
+                    }
+                });
+            } else if (value == "rating") {
+                ratingData.forEach((elem) => {
+                    if (elem.rating == data[d.id].content_rating) {
+                        elem.freq++;
+                    }
+                });
+            }
+        });
     if (value == "genre") {
         xScaleBar.domain([0, d3.max(genreData, (d) => {
             return d.freq;
@@ -413,19 +797,76 @@ function handleBrushMove() {
     }
 }
 
+function handleBrushEndMain() {
+    sel = d3.event.selection;
+    if (!sel) {
+        brushMainActive = false;
+        d3.selectAll("circle")
+          .filter((d) => { return d.budget != 0 && d.gross != 0; })
+          .classed("brushed", false);
+    } else {
+        brushMainActive = true;
+    }
+    handleBrushEnd()
+}
+
+function handleBrushEndBudget() {
+    sel = d3.event.selection;
+    if (!sel) {
+        brushBudgetActive = false;
+        d3.selectAll("circle")
+          .filter((d) => { return d.gross == 0; })
+          .classed("brushed", false);
+    } else {
+        brushBudgetActive = true;
+    }
+    handleBrushEnd()
+}
+
+function handleBrushEndGross() {
+    sel = d3.event.selection;
+    if (!sel) {
+        brushGrossActive = false;
+        d3.selectAll("circle")
+          .filter((d) => { return d.budget == 0; })
+          .classed("brushed", false);
+    } else {
+        brushGrossActive = true;
+    }
+    handleBrushEnd()
+}
+
 function handleBrushEnd() {
     console.log("END");
-    sel = d3.event.selection;
-	if (!sel) {
+	if (!brushMainActive && !brushBudgetActive && !brushGrossActive) {
         bars.selectAll("rect")
             .transition()
+            .duration(() => {
+                return 600;
+            })
+            .delay((d, i) => {
+                return bars.selectAll("rect").size() - (i + 1) * 25;
+            })
             .attr("width", 0);
-        d3.selectAll("circle")
-          .classed("brushed", false);
         brushActive = false;
         d3.selectAll(".contDetails")
           .remove();
+        d3.selectAll(".genreDetails")
+          .remove();
+        d3.selectAll(".ratingDetails")
+          .remove();
+        d3.selectAll(".faded")
+          .classed("hidden", false);
+        d3.selectAll(".xAxisBar")
+          .selectAll(".tick")
+          .classed("hidden", true);
+        d3.select("#bar-label")
+          .classed("hidden", true);
+        d3.select(".clicked")
+          .classed("clicked", false);
         selectedContinent = null;
+        selectedGenre = null;
+        selectedRating = null;
 		return;
 	}
 }
