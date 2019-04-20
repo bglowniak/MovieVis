@@ -2,95 +2,34 @@
   font-family: 'Montserrat', sans-serif;
 }
 
-h1, h2 {
+h1 {
   text-align: center;
 }
-
-/*div {
-  border: 1px solid black;
-}*/
 
 svg {
     font-size: 12px;
 }
 
 button {
-    margin-left: 45px;
-    margin-right: 40px;
-    margin-top: 10px;
+    margin-bottom: 0px;
+    margin-top: 0px;
 }
 
 #main {
   width: 100%;
-  height: 700px;
-  float: left;
+  height: 685px;
 }
 
+/* begin chart rules */
 #chart {
   float: left;
   width: 750px;
-  height: 700px;
-}
-
-#bar {
-  width: 600px;
   height: 450px;
-  float: right;
-}
-
-#details-pane {
-  width: 675px;
-  height: 200px;
-  margin-top: 25px;
-  float: right;
-}
-
-.details {
-  width: 225px;
-  height: 200px;
-  float: left;
-  display: inline-block;
-  border-radius: 15px;
-  border: 2px solid black;
-  background-color: rgba(127, 127, 127, 0.25);
-}
-
-.contDetails, .genreDetails, .ratingDetails {
-  width: 155px;
-  float: right;
-  margin-right: 190px;
-  margin-top: 10px;
-  border-radius: 15px;
-  border: 2px solid black;
-  background-color: rgba(127, 127, 127, 0.25);
-}
-
-.details > p, .contDetails > p, .genreDetails > p, .ratingDetails > p {
-  margin: 4px;
-  font-size: 12px;
 }
 
 .chart-title {
     font-weight: bold;
     font-size: 24px;
-}
-
-.title {
-  font-weight: bold;
-  font-size: 14px !important;
-  text-align: center;
-}
-
-.faded {
-    font-weight: bold;
-    font-size: 14px !important;
-    fill-opacity: 0.2;
-}
-
-.subheader {
-  font-style: italic;
-  text-align: center;
-  font-size: 10px !important;
 }
 
 .hidden {
@@ -116,14 +55,74 @@ circle:hover {
   fill: rgba(255, 166, 0, 0.5) !important;
 }
 
+.faded {
+    font-weight: bold;
+    font-size: 14px !important;
+    fill-opacity: 0.2;
+}
+/* end chart rules */
+
+#buttons-pane {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  width: 750px;
+  height: 25px;
+  border: 1px solid white; /* YIKES */
+  float: left;
+}
+
+#details-pane {
+  margin-top: 5px;
+  width: 750px;
+  height: 200px;
+  border: 1px solid white; /* YIKES */
+  float: left;
+}
+
+.details {
+  width: 240px;
+  height: 200px;
+  margin-left: 3px;
+  margin-right: 3px;
+  float: left;
+  display: inline-block;
+  border-radius: 15px;
+  border: 2px solid black;
+  background-color: rgba(127, 127, 127, 0.3);
+  -webkit-transition: all 250ms ease-in-out;
+  -moz-transition: all 250ms ease-in-out;
+  -ms-transition: all 250ms ease-in-out;
+  -o-transition: all 250ms ease-in-out;
+  transition: all 250ms ease-in-out;
+}
+
+.title {
+  font-weight: bold;
+  font-size: 14px !important;
+  text-align: center;
+}
+
+.subheader {
+  font-style: italic;
+  text-align: center;
+  font-size: 10px !important;
+}
+
+/* begin bar chart related rules */
+#dropdown {
+    margin-left: 50px;
+}
+
+#bar {
+  width: 600px;
+  height: 450px;
+  float: right;
+}
+
 .bar {
   fill: rgba(255, 166, 0, 0.5);
   stroke: black;
-}
-
-.continent:hover, .genre:hover, .rating:hover {
-  stroke: red;
-  stroke-width: 3px;
 }
 
 .clicked {
@@ -131,6 +130,38 @@ circle:hover {
   stroke-width: 3px;
 }
 
-#dropdown {
-    margin-left: 50px;
+.contDetails, .genreDetails, .ratingDetails {
+  width: 155px;
+  float: right;
+  margin-right: 190px;
+  margin-top: 10px;
+  border-radius: 15px;
+  border: 2px solid black;
+  background-color: rgba(127, 127, 127, 0.3);
+  -webkit-transition: all 250ms ease-in-out;
+  -moz-transition: all 250ms ease-in-out;
+  -ms-transition: all 250ms ease-in-out;
+  -o-transition: all 250ms ease-in-out;
+  transition: all 250ms ease-in-out;
+}
+
+.details:hover, .contDetails:hover, .genreDetails:hover, .ratingDetails:hover {
+  -webkit-transition: all 250ms ease-in-out;
+  -moz-transition: all 250ms ease-in-out;
+  -ms-transition: all 250ms ease-in-out;
+  -o-transition: all 250ms ease-in-out;
+  transition: all 250ms ease-in-out;
+  border-color: red;
+  opacity: 50%;
+  background-color: rgba(127, 127, 127, 0.15);
+}
+
+.details > p, .contDetails > p, .genreDetails > p, .ratingDetails > p {
+  margin: 4px;
+  font-size: 12px;
+}
+
+.continent:hover, .genre:hover, .rating:hover {
+  stroke: red;
+  stroke-width: 3px;
 }

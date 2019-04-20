@@ -8,7 +8,10 @@ var barWidth = 600;
 
 var numBoxes = 0;
 var maxBoxes = 3;
+var selectedMovies = [];
+
 var lineOn = false;
+var zeroesHidden = false;
 
 var brushContainer;
 var brush;
@@ -35,26 +38,38 @@ function appendDetailsBox(id, title, duration, year, rating, genres, director, c
     if (numBoxes == maxBoxes) { return; }
 
     numBoxes++;
+    selectedMovies.push(id);
 
     $("#details-pane").append("<div id=details-" + id + " class=details></div>")
-    id = "#details-" + id;
-    $(id).append("<p class=title>" + title + "</p>");
-    $(id).append("<p class=subheader>" + duration + " min | " + year + " | " + rating + "</p>");
-    $(id).append("<p class=subheader>" + genres.join(" | ") + "</p>");
-    $(id).append("<p><strong>Director: </strong>" + director + "</p>");
+    dom_id = "#details-" + id;
+    $(dom_id).append("<p class=title>" + title + "</p>");
+    $(dom_id).append("<p class=subheader>" + duration + " min | " + year + " | " + rating + "</p>");
+    $(dom_id).append("<p class=subheader>" + genres.join(" | ") + "</p>");
+    $(dom_id).append("<p><strong>Director: </strong>" + director + "</p>");
     cast_members = cast.join(", ");
-    $(id).append("<p><strong>Cast: </strong>" + cast_members + "</p>");
-    $(id).append("<p><strong>Country: </strong>" + country + "</p>");
-    $(id).append("<p><strong>Budget: </strong>$" + budget + "</p>");
-    $(id).append("<p><strong>Gross: </strong>$" + gross + "</p>");
-    $(id).append("<p><strong>Score: </strong>" + score + " / 10</p>");
+    $(dom_id).append("<p><strong>Cast: </strong>" + cast_members + "</p>");
+    $(dom_id).append("<p><strong>Country: </strong>" + country + "</p>");
+    //credit here: regex is wiiiiild
+    //https://stackoverflow.com/questions/2901102/how-to-print-a-number-with-commas-as-thousands-separators-in-javascript
+    formattedBudget = budget.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    formattedGross = gross.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    $(dom_id).append("<p><strong>Budget: </strong>$" + formattedBudget + "</p>");
+    $(dom_id).append("<p><strong>Gross: </strong>$" + formattedGross + "</p>");
+    $(dom_id).append("<p><strong>Score: </strong>" + score + " / 10</p>");
+    d3.select("[id='" + id + "']").classed("selected", true);
 
-    $(id).click(() => {
-        d3.select(".selected").classed("selected", false);
-        $(id).unbind("click");
-        $(id).remove();
-        numBoxes--;
+    $(dom_id).click(() => {
+        removeDetailsBox(id);
     });
+}
+
+function removeDetailsBox(id) {
+    dom_id = "#details-" + id;
+    $(dom_id).unbind("click");
+    $(dom_id).remove();
+    numBoxes--;
+    selectedMovies.splice(selectedMovies.indexOf(id), 1);
+    d3.select("[id='" + id + "']").classed("selected", false);
 }
 
 function appendCountriesBox(continent) {
@@ -92,7 +107,6 @@ function appendCountriesBox(continent) {
         }
     })
     $(id).click(() => {
-        console.log("hello?")
         $(id).unbind("click");
         $(id).remove();
         d3.select("#bar-" + continentToId(continent)).classed("clicked", false);
@@ -213,16 +227,19 @@ d3.csv("movies.csv", (movies) => {
     var budgetExtent = d3.extent(movies, function(row) { return row.budget; });
     var grossExtent = d3.extent(movies, function(row) { return row.gross; });
 
+    // define chart axes
     xScale = d3.scalePow().exponent(0.4).domain(budgetExtent).range([chart_margins.left, width - chart_margins.right])
     yScale = d3.scalePow().exponent(0.4).domain(grossExtent).range([height - chart_margins.top, chart_margins.bottom])
     var xAxis = d3.axisBottom().scale(xScale)
     var yAxis = d3.axisLeft().scale(yScale)
 
+    // define bar chart axes
     xScaleBar = d3.scaleLinear().domain([]).range([bar_margins.left, barWidth - bar_margins.right]);
     yScaleBar = d3.scaleBand().domain(genres).range([height - bar_margins.top, bar_margins.bottom]);
     xAxisBar = d3.axisBottom().scale(xScaleBar);
     yAxisBar = d3.axisLeft().scale(yScaleBar);
 
+    // initialize brush code for chart
     brushContainer = plot.append('g').attr('id', 'brush-container');
 
     brush = d3.brush().extent([[40, 20], [width - 20, height - 20]]);
@@ -233,53 +250,7 @@ d3.csv("movies.csv", (movies) => {
 
     brushContainer.call(brush);
 
-    d3.select("#chart")
-        .append("button")
-        .attr("id", "line-toggle")
-        .text("Toggle Profit-Loss Line")
-        .on("click", () => {
-            lineOn = !lineOn;
-
-            if (lineOn) {
-                plot.selectAll("circle")
-                    .filter((d) => {
-                        return d.budget <= d.gross && d.budget != 0 && d.gross != 0;
-                    })
-                    .transition()
-                    .duration(() => {
-                        return 10;
-                    })
-                    .delay((d, i) => {
-                        return (i+1);
-                    })
-                    .style("fill", "rgba(0, 128, 0, 0.4)");
-                plot.selectAll("circle")
-                    .filter((d) => {
-                        return d.budget > d.gross  && d.budget != 0 && d.gross != 0;
-                    })
-                    .transition()
-                    .duration(() => {
-                        return 10;
-                    })
-                    .delay((d, i) => {
-                        return (i+1);
-                    })
-                    .style("fill", "rgba(255, 0, 0, 0.4)");
-            } else {
-                plot.selectAll("circle")
-                    .transition()
-                    .duration(() => {
-                        return 10;
-                    })
-                    .delay((d, i) => {
-                        return (i+1) / 2;
-                    })
-                    .style("fill", "rgba(0, 206, 209, 0.3)");
-            }
-
-            d3.select(".budget-line").classed("hidden", !lineOn);
-        });
-
+    // populate chart
     plot.selectAll("circle")
        .data(movies)
        .enter()
@@ -298,7 +269,12 @@ d3.csv("movies.csv", (movies) => {
        .attr("cy", function(d) { return yScale(d.gross); })
        .attr("r", circleRadius)
        .on("click", function(d, i) {
-            appendDetailsBox(i, d.movie_title,
+            //inefficient...but we keep the array at 3 elements max
+            var alreadySelected = selectedMovies.includes(i);
+            if (alreadySelected) {
+                removeDetailsBox(i);
+            } else {
+                appendDetailsBox(i, d.movie_title,
                                  d.duration,
                                  d.title_year,
                                  d.content_rating,
@@ -309,10 +285,10 @@ d3.csv("movies.csv", (movies) => {
                                  d.budget,
                                  d.gross,
                                  d.imdb_score);
-            d3.select(".selected").classed("selected", false);
-            plot.select("[id='" + i + "']").classed("selected", true);
+            }
        });
 
+    // chart axes and labels
     plot.append("g")
         .call(xAxis.tickFormat(d => (d / 1000000) + "m"))
         .attr("transform", "translate(0, " + (height - chart_margins.bottom) + ")")
@@ -340,24 +316,7 @@ d3.csv("movies.csv", (movies) => {
         .attr("transform", "translate(7, " + (height / 2) + ") rotate(270)")
         .text("Gross ($)");
 
-    d3.select("#chart")
-         .append("button")
-         .attr("id", "clear-brush")
-         .style("float", "right")
-         .text("Clear Brush")
-         .on("click", () => {
-             brushMainActive = false;
-             handleBrushEnd();
-             brushContainer.call(brush.move, null);
-             selectedContinent = null;
-             selectedGenre = null;
-             selectedRating = null;
-             $(".contDetails").remove();
-             $(".genreDetails").remove();
-             $(".ratingDetails").remove();
-             d3.selectAll(".clicked").classed("clicked", false);
-         })
-
+    // plot budget v gross line
     plot.append('line')
         .attr('class', 'budget-line')
         .classed('hidden', !lineOn)
@@ -368,6 +327,7 @@ d3.csv("movies.csv", (movies) => {
         .attr("y1", yScale(0))
         .attr("y2", yScale(budgetExtent[1]));
 
+    // bar chart axes and labels
     bar.append("g")
        .classed("xAxisBar", true)
        .call(xAxisBar)
@@ -417,6 +377,83 @@ d3.csv("movies.csv", (movies) => {
         })
         .on('click', (d) => {
             appendGenreBox(d);
+        });
+
+    // define buttons
+    d3.select("#buttons-pane")
+        .append("button")
+        .attr("id", "zero-toggle")
+        .text("Toggle Zeroes")
+        .on("click", () => {
+            zeroesHidden = !zeroesHidden;
+            plot.selectAll("circle")
+                .filter((d) => {
+                    return d.budget == 0 || d.gross == 0;
+                  }).classed("hidden", zeroesHidden);
+        });
+
+    d3.select("#buttons-pane")
+        .append("button")
+        .attr("id", "line-toggle")
+        .text("Toggle Profit-Loss Line")
+        .on("click", () => {
+            lineOn = !lineOn;
+
+            if (lineOn) {
+                plot.selectAll("circle")
+                    .filter((d) => {
+                        return d.budget <= d.gross && d.budget != 0 && d.gross != 0;
+                    })
+                    .transition()
+                    .duration(() => {
+                        return 10;
+                    })
+                    .delay((d, i) => {
+                        return (i+1);
+                    })
+                    .style("fill", "rgba(0, 128, 0, 0.4)");
+                plot.selectAll("circle")
+                    .filter((d) => {
+                        return d.budget > d.gross  && d.budget != 0 && d.gross != 0;
+                    })
+                    .transition()
+                    .duration(() => {
+                        return 10;
+                    })
+                    .delay((d, i) => {
+                        return (i+1);
+                    })
+                    .style("fill", "rgba(255, 0, 0, 0.4)");
+            } else {
+                plot.selectAll("circle")
+                    .transition()
+                    .duration(() => {
+                        return 10;
+                    })
+                    .delay((d, i) => {
+                        return (i+1) / 2;
+                    })
+                    .style("fill", "rgba(0, 206, 209, 0.3)");
+            }
+
+            d3.select(".budget-line").classed("hidden", !lineOn);
+        });
+
+    d3.select("#buttons-pane")
+        .append("button")
+        .attr("id", "clear-brush")
+        .text("Clear Brush")
+        .on("click", () => {
+            brushMainActive = false;
+            handleBrushEnd();
+            brushContainer.call(brush.move, null);
+            selectedContinent = null;
+            selectedGenre = null;
+            selectedRating = null;
+            $(".contDetails").remove();
+            $(".genreDetails").remove();
+            $(".ratingDetails").remove();
+            d3.selectAll(".clicked").classed("clicked", false);
         });
 });
 
@@ -511,12 +548,10 @@ $("#dropdown").change(() => {
 })
 
 function handleBrushStart() {
-    console.log("START");
     brushActive = true;
 }
 
 function handleBrushMove() {
-    console.log("MOVE");
     d3.selectAll(".faded")
       .classed("hidden", true);
     d3.selectAll(".xAxisBar")
@@ -631,11 +666,11 @@ function handleBrushMove() {
 }
 
 function handleBrushEnd() {
-    console.log("END");
     if (!d3.event.selection) {
         brushActive = false;
     }
-	if (!brushActive) {
+
+    if (!brushActive) {
         bars.selectAll("rect")
             .transition()
             .duration(() => {
@@ -665,8 +700,8 @@ function handleBrushEnd() {
         selectedContinent = null;
         selectedGenre = null;
         selectedRating = null;
-		return;
-	}
+		    return;
+    }
 }
 
 function continentToId(continent) {
@@ -691,6 +726,7 @@ function idToContinent(id) {
     }
 }
 
+//lol
 function countryToContinent(country) {
     switch (country) {
         case "Germany": return continents[3];
