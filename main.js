@@ -9,6 +9,7 @@ circleRadius = 3;
 var barWidth = 600;
 
 var numBoxes = 0;
+var maxBoxes = 3;
 var lineOn = false;
 
 var brushContainer, brushContainerBudget, brushContainerGross;
@@ -34,11 +35,11 @@ var sel = null;
 var selectedContinent = null, selectedGenre = null, selectedRating = null;
 
 function appendDetailsBox(id, title, duration, year, rating, genres, director, cast, country, budget, gross, score) {
-    if (numBoxes) { return; }
+    if (numBoxes == maxBoxes) { return; }
 
     numBoxes++;
 
-    $("#chart").append("<div id=details-" + id + " class=details></div>")
+    $("#details-pane").append("<div id=details-" + id + " class=details></div>")
     id = "#details-" + id;
     $(id).append("<p class=title>" + title + "</p>");
     $(id).append("<p class=subheader>" + duration + " min | " + year + " | " + rating + "</p>");
@@ -52,6 +53,7 @@ function appendDetailsBox(id, title, duration, year, rating, genres, director, c
     $(id).append("<p><strong>Score: </strong>" + score + " / 10</p>");
 
     $(id).click(() => {
+        d3.select(".selected").classed("selected", false);
         $(id).unbind("click");
         $(id).remove();
         numBoxes--;
@@ -244,7 +246,7 @@ d3.csv("movies.csv", (movies) => {
     brushContainer = plot.append('g').attr('id', 'brush-container');
 
     brush = d3.brush().extent([[40, 20], [width - 20, height - 20]]);
-        
+
     brush.on('start', handleBrushStart)
          .on('brush', handleBrushMoveMain)
          .on('end', handleBrushEndMain);
@@ -314,7 +316,7 @@ d3.csv("movies.csv", (movies) => {
                     })
                     .style("fill", "rgba(0, 206, 209, 0.3)");
             }
-        
+
             d3.select(".budget-line").classed("hidden", !lineOn);
         });
 
@@ -325,7 +327,7 @@ d3.csv("movies.csv", (movies) => {
            return d.budget != 0 && d.gross != 0;
        })
        .append("circle")
-       .attr("id", function(d) {return d.i;} )
+       .attr("id", function(d, i) {return i;} )
        .style("fill", function(d) {
            if (d.budget <= d.gross && lineOn) {
                return "rgba(0, 128, 0, 0.4)";
@@ -350,6 +352,8 @@ d3.csv("movies.csv", (movies) => {
                                  d.budget,
                                  d.gross,
                                  d.imdb_score);
+            d3.select(".selected").classed("selected", false);
+            plot.select("[id='" + i + "']").classed("selected", true);
        });
 
     budget.selectAll("circle")
@@ -375,6 +379,8 @@ d3.csv("movies.csv", (movies) => {
                                  d.budget,
                                  d.gross,
                                  d.imdb_score);
+            d3.select(".selected").classed("selected", false);
+            budget.select("[id='" + i + "']").classed("selected", true);
        });
 
     gross.selectAll("circle")
@@ -400,6 +406,8 @@ d3.csv("movies.csv", (movies) => {
                                  d.budget,
                                  d.gross,
                                  d.imdb_score);
+            d3.select(".selected").classed("selected", false);
+            gross.select("[id='" + i + "']").classed("selected", true);
        });
 
     plot.append("g")
@@ -423,7 +431,7 @@ d3.csv("movies.csv", (movies) => {
         .classed("subheader", true)
         .attr("transform", "translate(" + ((width / 2) - 35) + ", " + (height - 2) + ")")
         .text("Budget ($)");
-    
+
     plot.append("text")
         .classed("subheader", true)
         .attr("transform", "translate(7, " + (height / 2) + ") rotate(270)")
@@ -434,14 +442,14 @@ d3.csv("movies.csv", (movies) => {
         .attr("transform", "translate(0, " + axisMargin + ")")
         .selectAll("text")
         .attr("transform", function (d) { return "rotate(-30)"; });
-    
+
     budget.append("text")
           .attr("x", width / 2)
           .attr("y", 30)
           .attr("text-anchor", "middle")
           .classed("title", true)
           .text("Movies With No Reported Gross");
-        
+
     budget.append("text")
           .classed("subheader", true)
           .attr("transform", "translate(" + ((width / 2) - 40) + ", " + (axisMargin + 35) + ")")
@@ -464,7 +472,7 @@ d3.csv("movies.csv", (movies) => {
           .classed("subheader", true)
           .attr("transform", "translate(" + ((width / 2) - 40) + ", " + (axisMargin + 35) + ")")
           .text("Gross ($)");
-    
+
     d3.select("#chart")
          .append("button")
          .attr("id", "clear-brush")
@@ -501,7 +509,7 @@ d3.csv("movies.csv", (movies) => {
        .classed("xAxisBar", true)
        .call(xAxisBar)
        .attr("transform", "translate(0, " + (height - bar_margins.bottom) + ")")
-    
+
     bar.append("g")
        .classed("yAxisBar", true)
        .call(yAxisBar)
@@ -715,7 +723,7 @@ function handleBrushMove() {
             ratingData.push({rating: l, freq: 0});
         })
     }
-    
+
     if (isBrush) {
         plot.selectAll("circle")
             .classed('brushed', (d) => {
@@ -837,7 +845,7 @@ function handleBrushEndGross() {
 }
 
 function handleBrushEnd() {
-    console.log("END");
+  console.log("END");
 	if (!brushMainActive && !brushBudgetActive && !brushGrossActive) {
         bars.selectAll("rect")
             .transition()
