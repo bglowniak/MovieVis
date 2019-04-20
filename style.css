@@ -17,7 +17,7 @@ button {
 
 #main {
   width: 100%;
-  height: 685px;
+  height: 700px;
 }
 
 /* begin chart rules */
@@ -41,8 +41,6 @@ button {
 }
 
 .selected {
-  /* stroke-width: 2px;
-  stroke: purple; */
   fill: purple !important;
 }
 
@@ -63,27 +61,27 @@ circle:hover {
 }
 /* end chart rules */
 
+#pane {
+  float: left;
+  height: 250px;
+}
+
 #buttons-pane {
   display: flex;
   justify-content: space-between;
   margin-top: 5px;
   width: 750px;
   height: 25px;
-  border: 1px solid white; /* YIKES */
-  float: left;
 }
 
 #details-pane {
   margin-top: 5px;
   width: 750px;
-  height: 200px;
-  border: 1px solid white; /* YIKES */
-  float: left;
 }
 
 .details {
   width: 240px;
-  height: 200px;
+  height: 215px;
   margin-left: 3px;
   margin-right: 3px;
   float: left;
