@@ -386,6 +386,7 @@ d3.csv("movies.csv", (movies) => {
         .text("Toggle Zeroes")
         .on("click", () => {
             zeroesHidden = !zeroesHidden;
+            handleBrushMove();
             plot.selectAll("circle")
                 .filter((d) => {
                     return d.budget == 0 || d.gross == 0;
@@ -444,7 +445,7 @@ d3.csv("movies.csv", (movies) => {
         .attr("id", "clear-brush")
         .text("Clear Brush")
         .on("click", () => {
-            brushMainActive = false;
+            brushActive = false;
             handleBrushEnd();
             brushContainer.call(brush.move, null);
             selectedContinent = null;
@@ -542,7 +543,6 @@ $("#dropdown").change(() => {
       .transition()
       .call(yAxisBar);
       if (brushActive) {
-          handleBrushStart();
           handleBrushMove();
       }
 })
@@ -560,21 +560,13 @@ function handleBrushMove() {
     d3.select("#bar-label")
       .classed("hidden", false);
     if (d3.event) {
-        sel = d3.event.selection;
+        if (d3.event.selection) {
+            sel = d3.event.selection;
+        }
     }
 
-    if (!sel) {
-        brushActive = false;
+    if (!brushActive) {
         return;
-    }
-    if (selectedContinent != null) {
-        appendCountriesBox(selectedContinent);
-    }
-    if (selectedGenre != null) {
-        appendGenreBox(selectedGenre);
-    }
-    if (selectedRating != null) {
-        appendRatingBox(selectedRating);
     }
 
     var [[left, top], [right, bottom]] = sel;
@@ -602,6 +594,11 @@ function handleBrushMove() {
         .classed('brushed', (d) => {
                 var cx = xScale(d.budget);
                 var cy = yScale(d.gross);
+                if (zeroesHidden) {
+                    if (d.budget == 0 || d.gross == 0) {
+                        return false;
+                    }
+                }
                 return left <= cx && cx <= right && top <= cy && cy <= bottom;
         });
     d3.selectAll(".brushed")
@@ -662,6 +659,16 @@ function handleBrushMove() {
             .attr('width', (d, i) => {
                 return xScaleBar(ratingData[i].freq)  - bar_margins.left;
             });
+    }
+
+    if (selectedContinent != null) {
+        appendCountriesBox(selectedContinent);
+    }
+    if (selectedGenre != null) {
+        appendGenreBox(selectedGenre);
+    }
+    if (selectedRating != null) {
+        appendRatingBox(selectedRating);
     }
 }
 

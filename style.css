@@ -36,9 +36,14 @@ button {
   display: none;
 }
 
+.brushed {
+  fill: rgba(255, 166, 0, 0.5) !important;
+}
+
 .selected {
-  stroke-width: 2px;
-  stroke: red;
+  /* stroke-width: 2px;
+  stroke: purple; */
+  fill: purple !important;
 }
 
 circle {
@@ -48,11 +53,7 @@ circle {
 }
 
 circle:hover {
-    fill: black !important;
-}
-
-.brushed {
-  fill: rgba(255, 166, 0, 0.5) !important;
+    fill: purple !important;
 }
 
 .faded {
@@ -126,7 +127,7 @@ circle:hover {
 }
 
 .clicked {
-  stroke: red;
+  stroke: purple;
   stroke-width: 3px;
 }
 
@@ -162,6 +163,6 @@ circle:hover {
 }
 
 .continent:hover, .genre:hover, .rating:hover {
-  stroke: red;
+  stroke: purple;
   stroke-width: 3px;
 }
