@@ -552,13 +552,6 @@ function handleBrushStart() {
 }
 
 function handleBrushMove() {
-    d3.selectAll(".faded")
-      .classed("hidden", true);
-    d3.selectAll(".xAxisBar")
-      .selectAll(".tick")
-      .classed("hidden", false);
-    d3.select("#bar-label")
-      .classed("hidden", false);
     if (d3.event) {
         if (d3.event.selection) {
             sel = d3.event.selection;
@@ -568,6 +561,13 @@ function handleBrushMove() {
     if (!brushActive) {
         return;
     }
+    d3.selectAll(".faded")
+      .classed("hidden", true);
+    d3.selectAll(".xAxisBar")
+      .selectAll(".tick")
+      .classed("hidden", false);
+    d3.select("#bar-label")
+      .classed("hidden", false);
 
     var [[left, top], [right, bottom]] = sel;
 
