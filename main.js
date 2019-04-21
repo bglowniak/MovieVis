@@ -73,6 +73,12 @@ function removeDetailsBox(id) {
 }
 
 function appendCountriesBox(continent) {
+    if (selectedContinent == continent) {
+        selectedContinent = null;
+        $(".contDetails").remove();
+        d3.selectAll(".clicked").classed("clicked", false);
+        return;
+    }
     $(".contDetails").remove();
     d3.selectAll(".clicked").classed("clicked", false);
     d3.select("#bar-" + continentToId(continent)).classed("clicked", true);
@@ -115,6 +121,12 @@ function appendCountriesBox(continent) {
 }
 
 function appendGenreBox(genre) {
+    if (selectedGenre == genre) {
+        selectedGenre = null;
+        $(".genreDetails").remove();
+        d3.selectAll(".clicked").classed("clicked", false);
+        return;
+    }
     $(".genreDetails").remove();
     d3.selectAll(".clicked").classed("clicked", false);
     d3.select("#bar-" + genre).classed("clicked", true);
@@ -143,6 +155,12 @@ function appendGenreBox(genre) {
 }
 
 function appendRatingBox(rating) {
+    if (selectedRating == rating) {
+        selectedRating = null;
+        $(".ratingDetails").remove();
+        d3.selectAll(".clicked").classed("clicked", false);
+        return;
+    }
     $(".ratingDetails").remove();
     d3.selectAll(".clicked").classed("clicked", false);
     if (rating == "Not Rated") {
